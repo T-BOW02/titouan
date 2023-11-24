@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import simpledialog, messagebox, filedialog
 from PIL import Image, ImageTk
 import datetime
-
+import winsound
 class TodoList:
     def __init__(self, name, time):
         self.name = name
@@ -30,7 +30,7 @@ class TodoList:
         # Displaying the time at the top of the window
         time_label = tk.Label(self.task_window, text=self.time, font=("Arial", 48))
         time_label.pack(anchor='n', pady=20)  # Centered horizontally, with padding from the top
-
+        winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
         for task in self.tasks:
             task_frame = tk.Frame(self.task_window, bd=1, relief='solid')  # Add border for visualization
             task_frame.pack(fill=tk.BOTH, expand=True, anchor='ne')
@@ -51,10 +51,14 @@ class TodoList:
             check_button = tk.Checkbutton(task_frame, variable=task['checked'], command=self.check_all_tasks)
             check_button.pack(side=tk.RIGHT)
 
+            self.task_window.after(600000, self.auto_close_window)#10min
     def check_all_tasks(self):
         if all(task['checked'].get() for task in self.tasks):  # Modifiez cette ligne
             self.task_window.destroy()
 
+    def auto_close_window(self):
+        if not all(task['checked'].get() for task in self.tasks):
+            self.task_window.destroy()
 
 class TodoListManager:
     def __init__(self, root):
@@ -110,18 +114,34 @@ class TodoListManager:
         todo_list.add_task(task_name, task_image_path)
         self.save_data()  # Ajoutez cette ligne pour sauvegarder les données
 
+    def remove_list(self, todo_list):
+        # Supprime la liste de tâches de la liste interne et de l'interface utilisateur
+        self.todo_lists.remove(todo_list)
+        self.save_data()
+        self.refresh_ui()
+
+    def refresh_ui(self):
+        # Rafraîchit l'interface utilisateur en réaffichant toutes les listes
+        for widget in self.list_frame.winfo_children():
+            widget.destroy()
+        for todo_list in self.todo_lists:
+            self.display_list(todo_list)
+
     def display_list(self, todo_list):
-        list_frame = tk.Frame(self.list_frame)  # Changed from self.root to self.list_frame
+        list_frame = tk.Frame(self.list_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, anchor='ne')
 
         list_label = tk.Label(list_frame, text=f"{todo_list.name} - {todo_list.time}", cursor="hand2")
-        list_label.bind("<Button-1>", lambda e: todo_list.show_tasks())  # Bind label click to show_tasks
+        list_label.bind("<Button-1>", lambda e: todo_list.show_tasks())
         list_label.pack(side=tk.LEFT)
 
         add_task_button = tk.Button(list_frame, text="Ajouter une tâche",
-                                    command=lambda: self.add_task(todo_list))  # Pass todo_list as argument
-        add_task_button.pack(side=tk.RIGHT)
+                                    command=lambda: self.add_task(todo_list))
+        add_task_button.pack(side=tk.LEFT)
 
+        remove_list_button = tk.Button(list_frame, text="Supprimer la liste",
+                                       command=lambda: self.remove_list(todo_list))
+        remove_list_button.pack(side=tk.RIGHT)
     def save_data(self):
         data = []
         for todo_list in self.todo_lists:
